@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         New ES6-Userscript
+// @name         sycm-city 
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  shows how to use babel compiler
