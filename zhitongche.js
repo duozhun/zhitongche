@@ -41,7 +41,7 @@ var inline_src = (<><![CDATA[
         });
     }
 
-    function getToken() {
+    function getToken(flag=true) {
         let formData = new FormData();
         formData.append('_referer', '/home');
         const userUrl = 'https://subway.simba.taobao.com/bpenv/getLoginUserInfo.htm';
@@ -49,7 +49,9 @@ var inline_src = (<><![CDATA[
         promise.then(data => {
             token = data.result.token;
         }).then(()=>{
-            getWordList(campaignId,adGroupId);
+            if (flag===true) {
+                getWordList(campaignId, adGroupId);
+            }
         });
     }
 
@@ -109,6 +111,10 @@ var inline_src = (<><![CDATA[
             }
         }
     }, 1000);
+
+    setInterval(()=>{
+        getToken(false);
+    },1000*60);
 
 
 /* jshint ignore:start */
