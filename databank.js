@@ -35,11 +35,11 @@ var inline_src = (<><![CDATA[
           resultString = resultString + newline
         }
       }
-      return resultString
+      return resultString;
     }
 
     function download(data, filename, type) {
-      var file = new Blob([data], { type: type });
+      var file = new Blob(["\ufeff"+data], { type: type });
       if (window.navigator.msSaveOrOpenBlob) // IE10+
         window.navigator.msSaveOrOpenBlob(file, filename);
       else { // Others
