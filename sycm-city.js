@@ -62,7 +62,9 @@ function getCate(date,keys,type) {
   })
   Promise.all(promises).then(data => {
     keys.map((key, index) => {
-      catSet.set(key,data[index].content.data.list[0].subList[0].cateId)
+      if (data[index].content.data.list.length !== 0) {
+        catSet.set(key, data[index].content.data.list[0].subList[0].cateId)
+      }
     })
   }).then(() => { getCity(date,keys,type) });
 }
