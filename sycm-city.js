@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         sycm-city 
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  shows how to use babel compiler
 // @author       You
 // @require      https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.18.2/babel.js
@@ -75,7 +75,7 @@ function getCate(date,keys,type) {
 
 function getCity(date, keys,type) {
   dataList = {}
-  const promises = keys.filter((key) => {catSet.get(key)!==undefined}).map((key) => {
+  const promises = keys.filter((key) => {return catSet.get(key)!==undefined}).map((key) => {
     const timestamp = new Date().getTime();
     const keyURI = encodeURI(key)
     const catId = catSet.get(key)
