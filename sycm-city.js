@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         sycm-city 
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  shows how to use babel compiler
 // @author       You
 // @require      https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.18.2/babel.js
@@ -17,25 +17,56 @@ var inline_src = (<><![CDATA[
     /* jshint esnext: false */
     /* jshint esversion: 6 */
 const token = document.querySelector('meta[name="microdata"]').content.match(new RegExp('legalityToken=([^&]*)'))[1].split(';')[0]
-const SYCMURL = 'https://sycm.taobao.com/mq/searchPortrait/'
-const catSet = new Map()
-let dataList = {}
+const SYCMURL = 'https://sycm.taobao.com/mq/searchPortrait'
+const cateSet = new Map()
+const apiArray = [
+  ['getRecent90DayPay','近90天支付金额'],
+  ['getAge','年龄分布'],
+  ['getProvince','省份分布'],
+  ['getCity','城市分布']
+]
+
+const apiMap = new Map(apiArray);
+
+function getApiKeyFromURL(url) {
+  for (let key of apiMap.keys()) {
+    if (url.indexOf(key) >= 0) {
+      return key
+    }
+  }
+}
+
+function getAgeFromId(id) {
+  if(id === '2') return '18-25岁'
+  if(id === '3') return '26-30岁'
+  if(id === '4') return '31-35岁'
+  if(id === '5') return '36-40岁'
+  if(id === '6') return '41-50岁'
+  if(id === '7') return '51岁以上'
+}
 
 function jsonToExcel(content) {
-  let resultString = "关键词,城市名,搜索点击人气,搜索点击人群占比\n"
-  for(let key in content) {
-    const mainKey = content[key].key;
-    if (content[key].value !== undefined) {
-      const mainData = content[key].value.content.data.list[0].subList
-      for (let value in mainData) {
-        const city = mainData[value].name;
-        const click = mainData[value].value;
-        const proportion = mainData[value].proportion;
-        let newline = `${mainKey},${city},${click},${proportion}\n`
-        resultString = resultString + newline;
+  let resultString = "关键词,一级类目,二级类目,类型,项目,搜索点击人气,搜索点击人群占比\n"
+  for(let i in content) {
+    const api = getApiKeyFromURL(content[i].url)
+    const typeName = apiMap.get(api)
+    if (content[i].json !== undefined && content[i].json.content.data.list.length !== 0) {
+      const mainData = content[i].json.content.data.list[0].subList
+      for (let j in mainData) {
+        const key = mainData[j].seKeyword
+        if (key !== undefined) {
+          const cateL1Name = cateSet.get(key).cateLevel1Name
+          const cateName = cateSet.get(key).cateName
+          let name = mainData[j].name
+          if(api === 'getAge') {
+            name = getAgeFromId(name)
+          }
+          const click = mainData[j].value
+          const proportion = mainData[j].proportion
+          let newline = `${key},${cateL1Name},${cateName},${typeName},${name},${click},${proportion}\n`
+          resultString = resultString + newline;
+        }
       }
-    } else {
-        resultString = resultString + `${mainKey},无搜索结果,,\n`;
     }
   }
   return resultString
@@ -49,49 +80,51 @@ function sendUrl(url) {
     xhr.onreadystatechange = ev => {
       if (xhr.readyState === 4 && xhr.status === 200) {
         const json = JSON.parse(xhr.response)
-        resolve(json)
+        const result ={}
+        result.json = json
+        result.url = url
+        resolve(result)
       }
     };
   });
 }
 
 function getCate(date,keys,type) {
-  catSet.clear()
+  cateSet.clear()
   const promises = keys.map( (key) => {
     const timestamp = new Date().getTime();
     const keyURI = encodeURI(key)
-    return `${SYCMURL}getCateDistribution.json?dateRange=${date.start}%7C${date.end}&dateType=${type}&device=0&seKeyword=${keyURI}&token=${token}&_${timestamp}`
+    return `${SYCMURL}/getCateDistribution.json?dateRange=${date.start}%7C${date.end}&dateType=${type}&device=0&seKeyword=${keyURI}&token=${token}&_${timestamp}`
   }).map( (url) => {
     return sendUrl(url)
   })
   Promise.all(promises).then(data => {
     keys.map((key, index) => {
-      if (data[index].content.data.list.length !== 0) {
-        catSet.set(key, data[index].content.data.list[0].subList[0].cateId)
+      if (data[index].json.content.data.list.length !== 0) {
+        cateSet.set(key, data[index].json.content.data.list[0].subList[0])
       }
     })
-  }).then(() => { getCity(date,keys,type) });
+  }).then(() => { getCity(date,keys,type) })
 }
 
 function getCity(date, keys,type) {
-  dataList = {}
-  const promises = keys.filter((key) => {return catSet.get(key)!==undefined}).map((key) => {
-    const timestamp = new Date().getTime();
-    const keyURI = encodeURI(key)
-    const catId = catSet.get(key)
-    return `${SYCMURL}/getCity.json?cateId=${catId}&dateRange=${date.start}%7C${date.end}&dateType=${type}&device=0&seKeyword=${keyURI}&token=${token}&_=${timestamp}`
+  const promises = Array.from(apiMap).map(([api,value]) => {
+    return keys.filter((key) => {
+      return cateSet.get(key) !== undefined
+    }).map((key) => {
+      const timestamp = new Date().getTime()
+      const keyURI = encodeURI(key)
+      const catId = cateSet.get(key).cateId
+      return `${SYCMURL}/${api}.json?cateId=${catId}&dateRange=${date.start}%7C${date.end}&dateType=${type}&device=0&seKeyword=${keyURI}&token=${token}&_=${timestamp}`
+    })
+  }).reduce( (result,value) => {
+    return Array.concat(result,value)
   }).map((url) => {
     return sendUrl(url)
   })
 
-  Promise.all(promises).then(data => {
-    keys.map((key, index) => {
-      dataList[index] = {}
-      dataList[index].key = key
-      dataList[index].value = data[index]
-    });
-  }).then(() => {
-    download(jsonToExcel(dataList), `${date.start}~${date.end}-城市排名.csv`, 'json')
+  Promise.all(promises).then((data) => {
+    download(jsonToExcel(data), `${date.start}~${date.end}-搜索人群画像.csv`, 'json')
   })
 }
 
