@@ -24,14 +24,18 @@ let dataList = {}
 function jsonToExcel(content) {
   let resultString = "关键词,城市名,搜索点击人气,搜索点击人群占比\n"
   for(let key in content) {
-    const mainKey = content[key].key
-    const mainData = content[key].value.content.data.list[0].subList
-    for(let value in mainData){
-      const city = mainData[value].name
-      const click = mainData[value].value 
-      const proportion = mainData[value].proportion
-      let newline = `${mainKey},${city},${click},${proportion}\n`
-      resultString = resultString + newline
+    const mainKey = content[key].key;
+    if (content[key].value !== undefined) {
+      const mainData = content[key].value.content.data.list[0].subList
+      for (let value in mainData) {
+        const city = mainData[value].name;
+        const click = mainData[value].value;
+        const proportion = mainData[value].proportion;
+        let newline = `${mainKey},${city},${click},${proportion}\n`
+        resultString = resultString + newline;
+      }
+    } else {
+        resultString = resultString + `${mainKey},无搜索结果,,\n`;
     }
   }
   return resultString
@@ -71,7 +75,7 @@ function getCate(date,keys,type) {
 
 function getCity(date, keys,type) {
   dataList = {}
-  const promises = keys.map((key) => {
+  const promises = keys.filter((key) => {catSet.get(key)!==undefined}).map((key) => {
     const timestamp = new Date().getTime();
     const keyURI = encodeURI(key)
     const catId = catSet.get(key)
@@ -115,21 +119,26 @@ wrapperDiv.innerHTML = `
   
 const typeMap = {'最近1天':'recent1','最近7天':'recent7','最近30天':'recent30','自然日':'day','自然周':'week','自定义':'range'};
 
-let keywordSelector = document.querySelector('.keyword-selector ')
-if (keywordSelector != undefined) {
-  keywordSelector.appendChild(wrapperDiv)
-  document.querySelector('#dz-btn').onclick = () => {
-    let keys = document.querySelector('#dz-keys').value.replace(new RegExp('，','g'),',').split(',')
-    let typeStr = document.querySelector('.dtpicker-main-text').innerText
-    let type =  typeMap[typeStr.substring(0,typeStr.indexOf('（'))]
-    let dateArr = document.querySelector('.dtpicker-main-text .num').innerText.split('~');
-    let date = {}
-    let re = new RegExp('20[0-9]{2}\-[0-9]{1,2}\-[0-9]{1,2}')
-    date.start = dateArr[0].match(re)[0];
-    date.end = dateArr[1].match(re)[0];
-    getCate(date, keys, type)
+
+let id = setInterval(() => {
+  let keywordSelector = document.querySelector('.keyword-selector ');
+  if (keywordSelector != undefined) {
+    clearInterval(id);
+    keywordSelector.appendChild(wrapperDiv)
+    document.querySelector('#dz-btn').onclick = () => {
+      let keys = document.querySelector('#dz-keys').value.replace(new RegExp('，', 'g'), ',').split(',')
+      let typeStr = document.querySelector('.dtpicker-main-text').innerText
+      let type = typeMap[typeStr.substring(0, typeStr.indexOf('（'))]
+      let dateArr = document.querySelector('.dtpicker-main-text .num').innerText.split('~');
+      let date = {}
+      let re = new RegExp('20[0-9]{2}\-[0-9]{1,2}\-[0-9]{1,2}')
+      date.start = dateArr[0].match(re)[0];
+      date.end = dateArr[1].match(re)[0];
+      getCate(date, keys, type)
+    }
   }
 }
+);
 
 function download(data, filename, type) {
   var file = new Blob([data], { type: type });
