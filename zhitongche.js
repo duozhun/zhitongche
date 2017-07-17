@@ -87,7 +87,12 @@ var inline_src = (<><![CDATA[
         const listUrl = 'https://subway.simba.taobao.com/bidword/tool/adgroup/newscoreSplit.htm';
         const promise = sendURL(listUrl, formData);
         promise.then(data => {
-            console.log(JSON.stringify(data));
+            let total = 0;
+            data.result.forEach( d => {
+                total += parseInt(d.kwscore);
+            })
+            document.querySelector('#kwBtn').innerHTML = `
+            相关性总分:${total}`
         });
     }
 
@@ -119,6 +124,12 @@ var inline_src = (<><![CDATA[
         显示相关性
       </span>
     `
+    const kwDiv = document.createElement('span');
+    kwDiv.innerHTML = `
+     <span class ="btn btn-brand fl" id="kwBtn">
+        修改相关性
+      </span>
+    `
 
     let id = setInterval(() => {
 
@@ -127,10 +138,11 @@ var inline_src = (<><![CDATA[
             const parent = document.querySelector('.standards-adgroups-items-bidword').querySelector('.fl');
             const oldSpan = parent.querySelector('span[id^=brix_brick]');
             parent.insertBefore(wrapperDiv, oldSpan);
+            parent.insertBefore(kwDiv, oldSpan);
             wrapperDiv.addEventListener('click',showScroe);
 
             if (addUrl.match('https://subway.simba.taobao.com/#!/campaigns/standards/adgroups/items*.') !== undefined) {
-                //getToken();
+                getToken();
             }
         }
     }, 1000);
