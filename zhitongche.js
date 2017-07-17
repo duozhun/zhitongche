@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         zhitongche 
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  shows how to use babel compiler
 // @author       npc
 // @run-at document-body
