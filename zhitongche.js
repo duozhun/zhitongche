@@ -131,7 +131,6 @@ var inline_src = (<><![CDATA[
     function getTitle() {
         document.querySelector('#kwBtn').innerHTML = `
             标题修改中...`
-        keywordBody.keyword = keywords;
         let formData = new FormData();
         formData.append('keywords', JSON.stringify(keywordBody));
         formData.append('titleNum', creativeSet.length)
