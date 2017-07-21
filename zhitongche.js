@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         zhitongche 
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.2.1
 // @description  shows how to use babel compiler
 // @author       npc
 // @run-at document-body
@@ -107,7 +107,7 @@ var inline_src = (<><![CDATA[
                 keywords.push(d.word)
             })
             document.querySelector('#kwBtn').innerHTML = `
-            相关性总分:${total}`
+            修改相关性(总分):${total}`
             keywordBody.keyword = keywords ;
             getCreative(cId,aId);
         });
@@ -129,6 +129,9 @@ var inline_src = (<><![CDATA[
 
 
     function getTitle() {
+        document.querySelector('#kwBtn').innerHTML = `
+            标题修改中...`
+        keywordBody.keyword = keywords;
         let formData = new FormData();
         formData.append('keywords', JSON.stringify(keywordBody));
         formData.append('titleNum', creativeSet.length)
@@ -171,7 +174,7 @@ var inline_src = (<><![CDATA[
                 return setCreativeTitle(req);
             });
             Promise.all(promises).then((data) => {
-                console.log(JSON.stringify(data));
+                getToken();
             });
         });
     }
