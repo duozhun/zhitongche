@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         zhitongche 
 // @namespace    http://tampermonkey.net/
-// @version      0.2.2
+// @version      0.2.3
 // @description  shows how to use babel compiler
 // @author       npc
 // @run-at document-body
@@ -47,21 +47,41 @@ var inline_src = (<><![CDATA[
         });
     }
 
-    function getToken(flag=true) {
+    function getToken(only=false) {
         let formData = new FormData();
         formData.append('_referer', '/home');
         const userUrl = 'https://subway.simba.taobao.com/bpenv/getLoginUserInfo.htm';
         const promise = sendURL(userUrl, formData);
-        promise.then(data => {
+        let addUrl = document.URL;
+        let campaignId = S(addUrl.match(new RegExp('campaignId=[0-9]+'))).between('campaignId=');
+        let adGroupId = S(addUrl.match(new RegExp('adGroupId=[0-9]+'))).between('adGroupId=');
+        return promise.then(data => {
             token = data.result.token;
+        }).then(() => {
+            if (only === false) {
+                return getBasicInfo(campaignId,adGroupId);
+            }
         }).then(()=>{
-            if (flag === true) {
-                let addUrl = document.URL;
-                let campaignId = S(addUrl.match(new RegExp('campaignId=[0-9]+'))).between('campaignId=');
-                let adGroupId = S(addUrl.match(new RegExp('adGroupId=[0-9]+'))).between('adGroupId=');
-                getWordList(campaignId, adGroupId);
+            if (only === false) {
+                return getWordList(campaignId, adGroupId);
             }
         });
+    }
+    let itemId = '';
+    let itemTitle = '';
+
+    function getBasicInfo(cId,aId) {
+        let formData = new FormData();
+        formData.set('sla','json');
+        formData.set('isAjaxRequest','true');
+        formData.set('token',token);
+        formData.set('_referer',`/campaigns/standards/adgroups/items/detail?tab=bidword&campaignId=${cId}&adGroupId=${aId}`);
+        const listUrl = `https://subway.simba.taobao.com/adgroup/get.htm?adGroupId=${aId}`;
+        const promise = sendURL(listUrl, formData);
+        return promise.then(data => {
+            itemId = data.result.outsideItemNumId;
+            itemTitle = data.result.title;
+        })
     }
 
     function getWordList(cId,aId) {
@@ -77,18 +97,19 @@ var inline_src = (<><![CDATA[
         const listUrl = 'https://subway.simba.taobao.com/bidword/list.htm';
         const promise = sendURL(listUrl, formData);
         let wordId = [];
-        promise.then(data => {
+        return promise.then(data => {
             for (let r in data.result) {
                 wordId.push(data.result[r].keywordId);
             }
         }).then(() => {
-            getScore(cId, aId, wordId);
+            return getScore(cId, aId, wordId);
         });
     }
 
     
             
     let keywordBody = {}
+    let lastBody = undefined;
     function getScore(cId,aId,wId) {
         let formData = new FormData();
         formData.set('adGroupId',aId);
@@ -99,17 +120,21 @@ var inline_src = (<><![CDATA[
         formData.set('_referer',`/campaigns/standards/adgroups/items/detail?tab=bidword&campaignId=${cId}&adGroupId=${aId}`);
         const listUrl = 'https://subway.simba.taobao.com/bidword/tool/adgroup/newscoreSplit.htm';
         const promise = sendURL(listUrl, formData);
-        promise.then(data => {
+        return promise.then(data => {
             let total = 0;
             let keywords = [];
+            let scores = [];
             data.result.forEach( d => {
                 total += parseInt(d.kwscore);
-                keywords.push(d.word)
+                scores.push(d.kwscore);
+                keywords.push(d.word);
             })
+            console.log(`总分为${total}`)
             document.querySelector('#kwBtn').innerHTML = `
             修改相关性(总分):${total}`
             keywordBody.keyword = keywords ;
-            getCreative(cId,aId);
+            keywordBody.score = scores;
+            return getCreative(cId,aId);
         });
     }
 
@@ -122,15 +147,20 @@ var inline_src = (<><![CDATA[
         formData.set('_referer',`/campaigns/standards/adgroups/items/detail?tab=creative&campaignId=${cId}&adGroupId=${aId}`);
         const listUrl = `https://subway.simba.taobao.com/creative/list.htm?adGroupId=${aId}`;
         const promise = sendURL(listUrl, formData);
-        promise.then(data => {
+        return promise.then(data => {
             creativeSet = data.result;
         });
     }
 
 
+
+    let titleList = undefined; 
+
     function getTitle() {
+        lastBody = keywordBody;
+        console.log('record lastBody')
         document.querySelector('#kwBtn').innerHTML = `
-            标题修改中...`
+            标题修改中...`;
         let formData = new FormData();
         formData.append('keywords', JSON.stringify(keywordBody));
         formData.append('titleNum', creativeSet.length)
@@ -138,7 +168,7 @@ var inline_src = (<><![CDATA[
         const promise = sendURL(listUrl, formData);
         promise.then(data => {
             let requestList = [];
-            let titleList = data.data.list;
+            titleList = data.data.list;
             for(let i in creativeSet) {
                 let req = {};
                 let creative = creativeSet[i];
@@ -172,9 +202,36 @@ var inline_src = (<><![CDATA[
             const promises = requestList.map( (req) => {
                 return setCreativeTitle(req);
             });
-            Promise.all(promises).then((data) => {
-                getToken();
+            Promise.all(promises).then(()=>{
+                return new Promise((resolve) => {
+                    setTimeout(resolve,3000);
+                })
+            }).then(() => {
+                return getToken()
+            }).then(()=>{
+                report();
             });
+        });
+    }
+
+    function report() {
+        console.log(lastBody);
+        console.log(keywordBody);
+        console.log(itemId);
+        console.log(itemTitle);
+        console.log(titleList);
+        let titles = {};
+        titles.title = titleList;
+        let formData = new FormData();
+        formData.append('itemId', itemId);
+        formData.append('itemTitle', itemTitle);
+        formData.append('keywords', JSON.stringify(lastBody));
+        formData.append('keywordsAfter', JSON.stringify(keywordBody));
+        formData.append('optTitles', JSON.stringify(titles))
+        const listUrl = 'https://service.duozhun.cc/algo/titleOptLog';
+        const promise = sendURL(listUrl, formData);
+        promise.then(()=>{
+
         });
     }
 
@@ -238,6 +295,8 @@ var inline_src = (<><![CDATA[
                 kwDiv.addEventListener('click', getTitle);
                 getToken();
                 document.querySelector('[mx-click$="{tab:bidword}"]').addEventListener('click', main);
+            } else {
+                // getToken(true);
             }
         }
     }, 1000);
