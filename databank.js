@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         databank 
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  shows how to use babel compiler
 // @author       You
 // @run-at document-body
@@ -61,7 +61,7 @@ var inline_src = (<><![CDATA[
         const xhr = new XMLHttpRequest();
             xhr.open('POST', url);
             // xhr.setRequestHeader('Content-type','application/x-www-form-urlencoded; charset=UTF-8');
-            xhr.setRequestHeader('content-type','application/json')
+            // xhr.setRequestHeader('content-type','application/json')
             // xhr.setRequestHeader('x-requested-with','XMLHttpRequest')
             xhr.setRequestHeader('x-csrf-token',token)
             xhr.send(formData);
@@ -89,19 +89,19 @@ var inline_src = (<><![CDATA[
 
     const wrapperDiv = document.createElement('div');
     wrapperDiv.innerHTML = `
-    <button type="button" class="next-btn next-btn-primary next-btn-medium" style="height: 28px; display: inline-block; float: right; margin-top: -22px;" id="download">下载</button>
+    <button type="button" class="next-btn next-btn-primary next-btn-medium" id="download">下载</button>
     `
 
     let id = setInterval(() => {
 
-        if (document.querySelector('.crowdPerspective') !== null) {
+        if (document.querySelector('.sidebar') !== null) {
             clearInterval(id);
-            const parent = document.querySelector('.crowdPerspective');
-            const oldSpan = parent.querySelector('button');
+            const parent = document.querySelector('.crowd-portrait-header');
+            const oldSpan = parent.querySelector('div');
             parent.insertBefore(wrapperDiv, oldSpan);
 
             if (addUrl.match('https://databank.yushanfang.com/#/CrowdPortrait*.') !== undefined) {
-                document.querySelector('#download').addEventListener('click',() => {
+                document.querySelector('#download').aGddEventListener('click',() => {
                   getGrowd()
                 })
             }
